@@ -1,5 +1,7 @@
 resource "proxmox_vm_qemu" "cloudinit-test2" {
-    count = 1
+    count = 2
+    # set the vm id in proxmox
+    vmid = 1000 + count.index
     name = "terraform-test-vm-${count.index}"
     desc = "A test for using terraform and cloudinit"
 
