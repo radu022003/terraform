@@ -76,4 +76,23 @@ resource "proxmox_vm_qemu" "cloudinit-test2" {
     ciuser = "radu"
     cipassword = "r4duc4nu"
 
+    
+
+}
+
+resource "null_resource" "example" {
+    depends_on = [proxmox_vm_qemu.cloudinit-test2[0], proxmox_vm_qemu.cloudinit-test2[1]]
+    provisioner "remote-exec" {
+        inline = [
+            "sleep 40",
+            "ansible-playbook -i /root/terraform/inventory.yml /root/terraform/playbook.yml"
+        ]
+
+        connection {
+            type        = "ssh"
+            user        = "root"
+            private_key = file("C:\\Users\\radun\\.ssh\\id_rsa_linux")
+            host        = "192.168.250.94"
+        }
+    }
 }
