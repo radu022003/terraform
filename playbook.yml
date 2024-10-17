@@ -20,7 +20,7 @@
     - name: Deny all other incoming connections
       ufw:
         rule: deny
-        direction: incoming
+        direction: in
 
     - name: Enable UFW
       ufw:
