@@ -1,0 +1,91 @@
+Boolean cpu_ok = false
+
+pipeline {
+    agent any
+
+    environment {
+        PROMETHEUS_URL = 'http://192.168.250.223:9090'
+        
+    }
+
+    stages {
+        stage('Check CPU Load') {
+            steps {
+                script {
+                    def response = ""
+                    double cpuLoad = 0
+                    double CPU_THRESHOLD = 0.5
+                    try {
+                        // Query Prometheus for CPU load
+                        response = sh(
+                            script: """
+                            curl -s '${PROMETHEUS_URL}/api/v1/query?query=node_load1' | \
+                            jq -r '.data.result[0].value[1]'
+                            """,
+                            returnStdout: true
+                        ).trim()
+                        echo "Prometheus response: ${response}"
+                    } catch (Exception e) {
+                        error "Error occurred while reading from prometheus: ${e.getMessage()}"
+                    }
+                    
+                    try {
+                        // Check if the response is not empty and is a valid number
+                        if (response && response.isNumber()) {
+                            try {
+                                cpuLoad = response?.toDouble()
+                                println(cpuLoad)
+                            } catch (NumberFormatException e) {
+                                println("Invalid number format: ${response}")
+                            }
+                            echo "Current CPU Load: ${cpuLoad}%"
+                        }
+                    } catch (Exception e) {
+                        error "Error occurred while checking CPU load: ${e.getMessage()}"
+                    }
+                    try {
+                        // Compare with threshold
+                        if (cpuLoad > CPU_THRESHOLD) {
+                            echo "CPU load (${cpuLoad}%) exceeds threshold (${CPU_THRESHOLD}%)"
+                            cpu_ok = false
+                        } else {
+                            echo "CPU load is within acceptable range"
+                            cpu_ok = true
+                        }
+                    } catch (Exception e) {
+                        error "Error occurred while comparing CPU load: ${e}"
+                    }
+                }
+                
+            }
+        }
+        
+        stage('Fix Network issue') {
+            when {
+                expression { return cpu_ok == false }
+            }
+            steps {
+                echo 'restart service'
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    sh 'ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i /home/jenkins/.ssh/id_rsa radu@192.168.250.224 "killall stress"'
+                }
+            }
+        }
+
+        stage('Deploy service') {
+            steps {
+                echo 'Service has been deployed'
+            }
+            
+        }
+        
+        
+    }
+
+    post {
+        always {
+            // Clean up or send notifications
+            echo 'Pipeline execution completed'
+        }
+    }
+}

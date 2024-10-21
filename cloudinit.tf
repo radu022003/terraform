@@ -64,7 +64,6 @@ resource "proxmox_vm_qemu" "cloudinit-test2" {
     boot = "order=scsi0"
     # Keep in mind to use the CIDR notation for the ip.
     ipconfig0 = "ip=192.168.250.22${count.index +1}/24,gw=192.168.250.1"
-    #ipconfig0 = "ip=dhcp"
     sshkeys = <<EOF
     ${var.ssh_pub_key}
     EOF
@@ -75,8 +74,6 @@ resource "proxmox_vm_qemu" "cloudinit-test2" {
     
     ciuser = "radu"
     cipassword = "r4duc4nu"
-
-    
 
 }
 
@@ -95,4 +92,8 @@ resource "null_resource" "example" {
             host        = "192.168.250.94"
         }
     }
+}
+
+output "vm_ips" {
+  value = [for vm in proxmox_vm_qemu.cloudinit-test2 : substr(vm.ipconfig0, 3, 15) ]
 }
